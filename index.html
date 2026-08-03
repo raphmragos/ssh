@@ -164,13 +164,13 @@
             display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
         }
         .option-btn {
-            flex: 1; min-width: 85px;
+            flex: 1; min-width: 80px;
             padding: 8px 10px;
             background: transparent;
             border: 1px solid var(--border);
             border-radius: 6px;
             color: var(--text);
-            font-size: 12px; font-weight: 500;
+            font-size: 11px; font-weight: 500;
             cursor: pointer; transition: all 0.2s; text-align: center;
         }
         .option-btn.active {
@@ -198,7 +198,7 @@
             color: var(--accent); font-size: 11px;
             cursor: pointer; transition: all 0.2s;
         }
-        .copy-btn:hover {background: rgba(147,197,253,0.06);}
+        .copy-btn:hover {background: rgba(147, 197, 253, 0.06);}
 
         #floating-player {
             position: fixed;
@@ -389,8 +389,14 @@
     
     const PROTOCOLS = ['vless', 'trojan', 'vmess', 'shadowsocks'];
     const PROTOCOL_LABELS = { vless:'VLESS', trojan:'Trojan', vmess:'VMess', shadowsocks:'Shadowsocks' };
+    
     const TRANSPORTS = ['ws', 'httpupgrade', 'xhttp', 'grpc'];
-    const TRANSPORT_LABELS = { ws:'WebSocket', httpupgrade:'HTTP Upgrade', xhttp:'XHTTP', grpc:'gRPC' };
+    const TRANSPORT_LABELS = { 
+        ws:'WebSocket', 
+        httpupgrade:'HTTP Upgrade', 
+        xhttp:'XHTTP',
+        grpc:'gRPC'
+    };
 
     const PATHS = { 
         vless: {ws:'/vless-virgozki', httpupgrade:'/vless-virgozki-hu', xhttp:'/vless-virgozki-xhttp', grpc:'/vless-grpc'}, 
@@ -525,12 +531,12 @@
     function prevSong() { currentSongIndex = (currentSongIndex-1+songs.length)%songs.length; loadSong(currentSongIndex); if(isPlaying) audio.play().catch(e=>{}); }
     function stopMusic() { audio.pause(); audio.currentTime=0; isPlaying=false; playBtn.textContent='▶'; }
 
-    // ✅ FINAL NA — WALANG GUN, WALANG NONE — LAHAT NAKA-MULTI AT H2,HTTP/1.1
+    // ✅ PERFECT GRPC GENERATOR — LAHAT KOMPLETO: multi mode, alpn, service name
     function buildConfig() {
-        const addr = selectedAddress, sni = selectedSNI, host = currentHost, path = PATHS[selectedProtocol][selectedTransport];
+        const addr=selectedAddress, sni=selectedSNI, host=currentHost, path=PATHS[selectedProtocol][selectedTransport];
         let transportParam = '';
-
-        // Iba pang transport — walang binago
+        let alpnList = 'http/1.1';
+        
         switch(selectedTransport){
             case 'ws': 
                 transportParam = `type=ws&path=${encodeURIComponent(path)}&host=${host}`; 
@@ -540,41 +546,40 @@
                 break;
             case 'xhttp': 
                 transportParam = `type=xhttp&path=${encodeURIComponent(path)}&host=${host}&mode=packet-upstream`; 
+                alpnList = 'h2,http/1.1';
                 break;
-            // ✅ GRPC — EKSATONG HILING MO: headerType=multi, alpn=h2,http/1.1 + serviceName
-            case 'grpc': 
-                transportParam = `type=grpc&path=${encodeURIComponent(path)}&host=${host}&serviceName=${encodeURIComponent(path)}&headerType=multi&alpn=h2,http/1.1`; 
+            case 'grpc':
+                // ✅ LAHAT NG GRPC AY MAY multi, alpn, at service name
+                transportParam = `type=grpc&serviceName=${encodeURIComponent(path)}&mode=multi&path=${encodeURIComponent(path)}&host=${host}`;
+                alpnList = 'h2,http/1.1';
                 break;
         }
 
-        // ✅ LAHAT NG PROTOCOL + GRPC — TAMA NA ANG LAHAT NG PARAMETERS
         switch(selectedProtocol){
             case 'vless': 
-                return `vless://${UUID}@${addr}:443?encryption=none&${transportParam}&security=tls&fp=chrome&sni=${sni}#VLESS-GRPC-VIRGOZKI`;
+                return `vless://${UUID}@${addr}:443?encryption=none&${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnList)}#VLESS-${selectedTransport.toUpperCase()}-VIRGOZKI`;
             case 'trojan': 
-                return `trojan://${SS_PASSWORD}@${addr}:443?${transportParam}&security=tls&fp=chrome&sni=${sni}#TROJAN-GRPC-VIRGOZKI`;
+                return `trojan://${SS_PASSWORD}@${addr}:443?${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnList)}#TROJAN-${selectedTransport.toUpperCase()}-VIRGOZKI`;
             case 'vmess': 
-                // ✅ VMess gRPC — siguradong naka multi at h2,http/1.1
                 return `vmess://${btoa(JSON.stringify({
                     v:'2',
-                    ps:`VMESS-GRPC-VIRGOZKI`,
+                    ps:`VMESS-${selectedTransport.toUpperCase()}-VIRGOZKI`,
                     add:addr,
                     port:'443',
                     id:UUID,
                     aid:'0',
                     scy:'auto',
-                    net:'grpc',
+                    net:selectedTransport,
                     host:host,
                     path:path,
                     tls:'tls',
                     sni:sni,
                     fp:'chrome',
-                    alpn:'h2,http/1.1',
-                    type:'multi'
+                    alpn:alpnList
                 })).replace(/=+$/,'')}`;
             case 'shadowsocks': 
                 const ssCred = btoa(`${SS_METHOD}:${SS_PASSWORD}`).replace(/=+$/,'');
-                return `ss://${ssCred}@${addr}:443?${transportParam}&security=tls&sni=${sni}#SS-GRPC-VIRGOZKI`;
+                return `ss://${ssCred}@${addr}:443?${transportParam}&security=tls&sni=${sni}&alpn=${encodeURIComponent(alpnList)}#SS-${selectedTransport.toUpperCase()}-VIRGOZKI`;
         }
     }
 
@@ -588,7 +593,7 @@
         items.forEach(item=>{
             const el=document.createElement('div'); el.className='modal-item'; el.textContent=item;
             el.addEventListener('click',()=>{
-                if(type==='address'){ selectedAddress=item; selectedSNI=item; addressSelected.textContent='Napili: '+item; sniSelected.textContent='Napili: '+item; addressBtn.textContent=item+' ▾'; addressModal.classList.remove('show'); }
+                if(type==='address'){ selectedAddress=item; addressSelected.textContent='Napili: '+item; addressBtn.textContent=item+' ▾'; addressModal.classList.remove('show'); }
                 else { selectedSNI=item; sniSelected.textContent='Napili: '+item; sniBtn.textContent=item+' ▾'; sniModal.classList.remove('show'); }
                 updateUI();
             });
@@ -599,7 +604,7 @@
     function buildOptions(container, items, sel, lbl, cb) {
         container.innerHTML='';
         items.forEach(i=>{
-            const b=document.createElement('button'); b.className='option-btn'+(i===sel?' active':''); b.textContent=lbl[i];
+            const b=document.createElement('button'); b.className='option-btn'+(i===sel?' active':''); b.textContent=lbl?lbl[i]:i;
             b.addEventListener('click',()=>{
                 container.querySelectorAll('.option-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); cb(i); updateUI();
             });
