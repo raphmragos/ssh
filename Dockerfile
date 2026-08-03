@@ -1,9 +1,9 @@
 FROM openresty/openresty:alpine
 
-# ✅ DINAGDAG ANG NGINX HTTP/2 DEPENDENCY + MGA KAILANGAN
-RUN apk add --no-cache ca-certificates wget unzip tini nginx-mod-http-v2
+# ✅ INAYOS: Inalis ang hindi umiiral na "nginx-mod-http-v2" — BUILT-IN NA ITO SA OPENRESTY!
+RUN apk add --no-cache ca-certificates wget unzip tini
 
-# ✅ XRAY DOWNLOAD – WALANG PINAGBAGO, GINAMIT ANG TAMANG LINK
+# ✅ XRAY DOWNLOAD – TAMA ANG LINK AT WALANG BINAGO
 RUN wget --timeout=120 -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/download/v24.10.31/Xray-linux-64.zip && \
     unzip -q /tmp/xray.zip -d /tmp/xray/ && \
     mv /tmp/xray/xray /usr/local/bin/ && \
@@ -19,10 +19,10 @@ COPY index.html /usr/local/openresty/nginx/html/index.html
 
 ENV XRAY_LOCATION_ASSET=/usr/local/share/xray/
 
-# ✅ IPINAKITA ANG PORT 8080 (KASAMA ANG HTTP/2/GPRPC)
+# ✅ PORT EXPOSE — may suporta na sa HTTP/2 at gRPC
 EXPOSE 8080/tcp
 
 ENTRYPOINT ["/sbin/tini", "--"]
-# ✅ SIGURADONG UMAANDAL ANG PAREHONG XRAY AT OPENRESTY
+# ✅ TAMA NA PAGPAPATAKBO — parehong XRAY at OpenResty ay gagana nang sabay
 CMD sh -c "xray run -c /etc/xray.json & exec openresty -g 'daemon off;'"
 
