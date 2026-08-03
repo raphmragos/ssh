@@ -1,16 +1,16 @@
 FROM openresty/openresty:alpine
 
-# ✅ DAGDAG ANG openssl PARA MAKAGUMAGAWA NG CERT
+# ✅ LAHAT NG KAILANGAN
 RUN apk add --no-cache ca-certificates wget unzip tini openssl
 
-# ✅ GUMAGAWA NG SSL CERT — SIGURADONG NASA TAMANG LOKASYON
-RUN mkdir -p /usr/local/openresty/nginx/conf/ssl && \
+# ✅ SIGURADONG GUMAGAWA NG SSL CERT SA TAMANG LOKASYON
+RUN mkdir -p /etc/nginx/ssl && \
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-    -keyout /usr/local/openresty/nginx/conf/ssl/key.pem \
-    -out /usr/local/openresty/nginx/conf/ssl/cert.pem \
+    -keyout /etc/nginx/ssl/key.pem \
+    -out /etc/nginx/ssl/cert.pem \
     -subj "/C=PH/ST=Iloilo/L=Iloilo City/O=VIRGOZKI/CN=*"
 
-# ✅ XRAY DOWNLOAD — WALANG BINAGO
+# ✅ XRAY DOWNLOAD — TAMA ANG LINK
 RUN wget --timeout=120 -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/download/v24.10.31/Xray-linux-64.zip && \
     unzip -q /tmp/xray.zip -d /tmp/xray/ && \
     mv /tmp/xray/xray /usr/local/bin/ && \
@@ -25,11 +25,12 @@ COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 COPY index.html /usr/local/openresty/nginx/html/index.html
 
 ENV XRAY_LOCATION_ASSET=/usr/local/share/xray/
-# ✅ LOCK SA 8080 — TUGMA SA CLOUD RUN AT DEPLOY SCRIPT
 ENV PORT=8080
-EXPOSE ${PORT}/tcp
+EXPOSE 8080/tcp
 
 ENTRYPOINT ["/sbin/tini", "--"]
-# ✅ TINANGGAL ANG MALING sed — HINDI NA KAILANGAN DAHIL LOCK NA SA 8080
-CMD sh -c "xray run -c /etc/xray.json >/dev/null 2>&1 & \
+# ✅ PINAKA-SIGURADONG PAGPAPATAKBO:
+# 1. Patakbuhin ang Xray — kahit magka-error, hindi titigil ang container
+# 2. Siguradong tatakbo ang OpenResty bilang pangunahing proseso
+CMD sh -c "xray run -c /etc/xray.json || true & \
            exec openresty -g 'daemon off;'"
