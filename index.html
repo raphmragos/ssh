@@ -1,1 +1,652 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VIRGOZKI VPN PANEL | LIBRENG INTERNET</title>
+    <style>
+        :root {
+            --border: rgba(255, 255, 255, 0.18);
+            --border-accent: rgba(147, 197, 253, 0.35);
+            --text: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --accent: #93c5fd;
+            --success: #6ee7b7;
+            --bg-fallback: #050b18;
+        }
+
+        * {margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent;}
+
+        body {
+            min-height: 100vh;
+            color: var(--text);
+            padding: 16px 12px;
+            position: relative;
+            overflow-x: hidden;
+            background: var(--bg-fallback);
+        }
+
+        #bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: -2;
+            background: var(--bg-fallback);
+        }
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 540px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .vpn-status-card {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .vpn-status-card.connected {
+            border-color: rgba(110, 231, 183, 0.4);
+        }
+        .status-indicator {
+            width: 55px;
+            height: 55px;
+            margin: 0 auto 10px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            background: transparent;
+        }
+        .status-indicator.connected {
+            border-color: var(--success);
+            color: var(--success);
+        }
+        .status-text {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+        .status-subtext {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .info-box {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .info-box.full {grid-column: 1 / -1;}
+        .info-label {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-bottom: 3px;
+        }
+        .info-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            word-break: break-all;
+        }
+        .info-value.success {color: var(--success);}
+
+        .section {
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex; align-items: center; gap: 5px;
+        }
+        .select-btn {
+            width: 100%;
+            padding: 10px 12px;
+            background: transparent;
+            border: 1px solid var(--border-accent);
+            border-radius: 6px;
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.2s;
+        }
+        .select-btn:hover {background: rgba(147, 197, 253, 0.06);}
+        .selected-value {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--success);
+            font-weight: 500;
+            padding-left: 4px;
+        }
+
+        .btn-group {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+        }
+        .option-btn {
+            flex: 1; min-width: 85px;
+            padding: 8px 10px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 12px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .option-btn.active {
+            border-color: var(--accent); color: var(--accent); font-weight: 600;
+        }
+        .option-btn:hover {border-color: var(--accent);}
+
+        .config-box {
+            position: relative; margin-top: 8px;
+        }
+        .config-text {
+            width: 100%; min-height: 80px;
+            padding: 12px; padding-top: 32px;
+            background: rgba(0,0,0,0.05);
+            border: 1px solid var(--border); border-radius: 6px;
+            color: var(--success);
+            font-family: 'Consolas', monospace; font-size: 11px; line-height: 1.4;
+            resize: none; overflow-x: hidden;
+        }
+        .copy-btn {
+            position: absolute; top: 6px; right: 6px;
+            padding: 4px 8px;
+            background: transparent;
+            border: 1px solid var(--border-accent); border-radius: 4px;
+            color: var(--accent); font-size: 11px;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .copy-btn:hover {background: rgba(147,197,253,0.06);}
+
+        #floating-player {
+            position: fixed;
+            top: 18px; left: 18px;
+            width: 250px;
+            background: transparent;
+            border: 1px solid var(--border-accent); border-radius: 12px;
+            padding: 12px; z-index: 99999; user-select: none;
+        }
+        .player-drag-handle {
+            width: 100%; padding: 4px 0; margin-bottom: 8px;
+            cursor: grab; display: flex; align-items: center; justify-content: center; gap: 6px;
+            border-bottom: 1px solid rgba(147,197,253,0.2);
+        }
+        .player-drag-handle:active {cursor: grabbing;}
+        .drag-text {font-size: 11px; color: var(--accent); font-weight: 500;}
+        .player-title {font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .player-controls {display: flex; gap: 10px; justify-content: center;}
+        .p-btn {width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; font-size: 14px;}
+        .p-btn:hover {background: rgba(147,197,253,0.06);}
+
+        .modal {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: transparent;
+            z-index: 99999; display: none; flex-direction: column; padding: 16px; overflow: hidden;
+        }
+        .modal-bg-video {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            object-fit: cover; z-index: -1;
+            background: var(--bg-fallback);
+        }
+        .modal.show {display: flex;}
+        .modal-list {flex:1; overflow-y: auto; margin-top: 10px; position: relative; z-index: 1;}
+        .modal-item {
+            padding: 10px 14px; margin-bottom: 5px;
+            background: transparent;
+            border: 1px solid var(--border); border-radius: 6px;
+            cursor: pointer; font-size: 13px; transition: all 0.2s; color: var(--text);
+        }
+        .modal-item:hover, .modal-item.selected {
+            border-color: var(--border-accent); background: rgba(147,197,253,0.06);
+        }
+        .modal-close {
+            padding: 7px; background: transparent; border: 1px solid var(--border-accent); border-radius: 6px;
+            color: var(--accent); cursor: pointer; text-align: center; margin-top: 8px; font-weight: 600; font-size: 13px; position: relative; z-index: 1;
+        }
+
+        #loading-screen {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: var(--bg-fallback);
+            z-index: 999999; overflow: hidden;
+            transition: opacity 0.5s ease;
+        }
+        #loading-screen.hidden {opacity: 0; pointer-events: none;}
+        .loading-bg-video {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            object-fit: cover; z-index: -2;
+            background: var(--bg-fallback);
+        }
+        .loading-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: transparent; z-index: -1;
+        }
+        .load-text {font-size: 22px; font-weight: 700; color: var(--accent); margin-bottom: 6px; position: relative; z-index: 1;}
+        .load-sub {font-size: 13px; color: var(--text-secondary); position: relative; z-index: 1;}
+        .loader-spinner {
+            width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin 1s linear infinite; margin: 15px 0;
+        }
+        @keyframes spin {to {transform: rotate(360deg);}}
+    </style>
+</head>
+<body>
+
+<video id="bg-video" autoplay muted loop playsinline preload="auto">
+    <source src="https://dl.dropboxusercontent.com/scl/fi/4ow0wjnznaf03cv12qkfb/ssstik.io_-ikoppie_1785393023125.mp4?rlkey=o9je28ockyfobm4243vu0un5s&st=ekb8hc0g&dl=1" type="video/mp4">
+</video>
+<div class="bg-overlay"></div>
+
+<div id="loading-screen">
+    <video class="loading-bg-video" autoplay muted loop playsinline preload="auto">
+        <source src="https://dl.dropboxusercontent.com/scl/fi/4ow0wjnznaf03cv12qkfb/ssstik.io_-ikoppie_1785393023125.mp4?rlkey=o9je28ockyfobm4243vu0un5s&st=a7hso75q&dl=1" type="video/mp4">
+    </video>
+    <div class="loading-overlay"></div>
+    <div class="load-text">VIRGOZKI PANEL</div>
+    <div class="loader-spinner"></div>
+    <div class="load-sub">NAG LOADING PA NGANI...</div>
+</div>
+
+<div class="container" id="main-content" style="display:none;">
+    <div class="vpn-status-card connected">
+        <div class="status-indicator connected">✓</div>
+        <div class="status-text">VIRGOZKI PANEL</div>
+        <div class="status-subtext">VIRGOZKI EDITION • LIBRENG INTERNET</div>
+    </div>
+
+    <div class="info-grid">
+        <div class="info-box">
+            <div class="info-label">HOST / ADDRESS</div>
+            <div class="info-value" id="info-host">---</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">SNI / SERVER NAME</div>
+            <div class="info-value" id="info-sni">---</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">PROTOCOL</div>
+            <div class="info-value" id="info-proto">VLESS</div>
+        </div>
+        <div class="info-box">
+            <div class="info-label">TRANSPORT</div>
+            <div class="info-value" id="info-transport">WebSocket</div>
+        </div>
+        <div class="info-box full">
+            <div class="info-label">UPTIME</div>
+            <div class="info-value success" id="runtime-display">00:00:00</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header"><div class="section-title">🔌 BUG HOST / ADDRESS</div></div>
+        <button class="select-btn" id="address-btn">Pumili ng Address ▾</button>
+        <div class="selected-value" id="address-selected">Wala pang napipili</div>
+    </div>
+
+    <div class="section">
+        <div class="section-header"><div class="section-title">🛡️ SNI / SERVER NAME</div></div>
+        <button class="select-btn" id="sni-btn">Pumili ng SNI ▾</button>
+        <div class="selected-value" id="sni-selected">Wala pang napipili</div>
+    </div>
+
+    <div class="section">
+        <div class="section-header"><div class="section-title">🔐 URI NG PROTOCOL</div></div>
+        <div class="btn-group" id="proto-buttons"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-header"><div class="section-title">📶 URI NG KONEKSYON</div></div>
+        <div class="btn-group" id="trans-buttons"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-header"><div class="section-title">📋 GENERATED CONFIG</div></div>
+        <div class="config-box">
+            <textarea class="config-text" id="config-display" readonly>---</textarea>
+            <button class="copy-btn" id="copy-btn">Kopyahin</button>
+        </div>
+    </div>
+</div>
+
+<div id="floating-player">
+    <div class="player-drag-handle">
+        <span class="drag-text">⋮⋮ MOVE/ILIPAT ITO</span>
+    </div>
+    <div class="player-title" id="song-name">NEFFEX - Control</div>
+    <div class="player-controls">
+        <button class="p-btn" id="prev" title="Nakaraan">⏮</button>
+        <button class="p-btn" id="play" title="I-play/I-hinto">▶</button>
+        <button class="p-btn" id="stop" title="Itigil">⏹</button>
+        <button class="p-btn" id="next" title="Susunod">⏭</button>
+    </div>
+</div>
+
+<div class="modal" id="address-modal">
+    <video class="modal-bg-video" autoplay muted loop playsinline preload="auto">
+        <source src="https://dl.dropboxusercontent.com/scl/fi/d2c75kh83416h0nd94aub/ssstik.io_-ai_inkdreams_1785391156354.mp4?rlkey=nv0yf6qlx47ar2mdqg4k7ouuw&st=rdfwok7e&dl=1" type="video/mp4">
+    </video>
+    <div class="section-title">🔌 PUMILI NG ADDRESS</div>
+    <div class="modal-list" id="address-list"></div>
+    <div class="modal-close" id="address-close">✕ TAPOS</div>
+</div>
+<div class="modal" id="sni-modal">
+    <video class="modal-bg-video" autoplay muted loop playsinline preload="auto">
+        <source src="https://dl.dropboxusercontent.com/scl/fi/d2c75kh83416h0nd94aub/ssstik.io_-ai_inkdreams_1785391156354.mp4?rlkey=nv0yf6qlx47ar2mdqg4k7ouuw&st=rdfwok7e&dl=1" type="video/mp4">
+    </video>
+    <div class="section-title">🛡️ PUMILI NG SNI</div>
+    <div class="modal-list" id="sni-list"></div>
+    <div class="modal-close" id="sni-close">✕ TAPOS</div>
+</div>
+
+<script>
+(function() {
+    const UUID = 'b831381d-6324-4d53-ad4f-8cda48b30811';
+    const SS_METHOD = 'aes-256-gcm';
+    const SS_PASSWORD = 'virgozki';
+    let currentHost = window.location.hostname || '127.0.0.1';
+    
+    const PROTOCOLS = ['vless', 'trojan', 'vmess', 'shadowsocks'];
+    const PROTOCOL_LABELS = { vless:'VLESS', trojan:'Trojan', vmess:'VMess', shadowsocks:'Shadowsocks' };
+    const TRANSPORTS = ['ws', 'httpupgrade', 'xhttp', 'grpc'];
+    const TRANSPORT_LABELS = { ws:'WebSocket', httpupgrade:'HTTP Upgrade', xhttp:'XHTTP', grpc:'gRPC' };
+
+    const PATHS = { 
+        vless: {ws:'/vless-virgozki', httpupgrade:'/vless-virgozki-hu', xhttp:'/vless-virgozki-xhttp', grpc:'/vless-grpc'}, 
+        trojan: {ws:'/virgozki', httpupgrade:'/virgozki-hu', xhttp:'/virgozki-xhttp', grpc:'/trojan-grpc'}, 
+        vmess: {ws:'/vmess-virgozki', httpupgrade:'/vmess-virgozki-hu', xhttp:'/vmess-virgozki-xhttp', grpc:'/vmess-grpc'}, 
+        shadowsocks: {ws:'/ss-virgozki', httpupgrade:'/ss-virgozki-hu', xhttp:'/ss-virgozki-xhttp', grpc:'/ss-grpc'}
+    };
+
+    let selectedProtocol = 'vless';
+    let selectedTransport = 'ws';
+    let selectedAddress = currentHost;
+    let selectedSNI = currentHost;
+
+    let addressList = [
+        currentHost, 'firebase.googleapis.com', 'google.com', 'firebase-settings.googleapis.com',
+        'payments.googleapis.com', 'run.googleapis.com', 'www.gstatic.com', 'dl.google.com',
+        'connectivitycheck.gstatic.com', 'fcm.googleapis.com', 'id.googleapis.com', 'ssl.gstatic.com', 
+        'virgozki.googleapis.com', 'chart.apis.google.com', 'chat.google.com', 'mt0.googleapis.com'
+    ];
+    let sniList = [
+        currentHost, 'fcmtoken.googleapis.com', 'api.paymaya.com', 'support.maya.ph',
+        'firebase-settings.crashlytics.com', 'firebaseinstallations.googleapis.com', 'fonts.googleapis.com',
+        'ajax.googleapis.com', 'help.iwanttfc.com', 'support.iwanttfc.com', 'api.iwanttfc.com'
+    ];
+
+    const audio = new Audio();
+    audio.volume = 0.7;
+    audio.preload = 'metadata';
+    const songs = [
+        { name: 'NEFFEX - Control', url: 'https://dl.dropboxusercontent.com/scl/fi/5qeqe89ibmyikcj7dmgie/NEFFEX-Control-Official-Lyric-Video-Copyright-Free-No.242-MP3_160K.mp3?rlkey=8mec522bb0mycbgeiw3b2p1st&st=n3xggf1g&dl=1' },
+        { name: 'NEFFEX - Crown', url: 'https://dl.dropboxusercontent.com/scl/fi/z4sbip8lthzy5piuolpn2/NEFFEX-Crown-Copyright-Free-No.15-MP3_160K.mp3?rlkey=7gf528zikfyrxeav2blxh2ixl&st=b3diiygv&dl=1' },
+        { name: 'NEFFEX - Fight Back', url: 'https://dl.dropboxusercontent.com/scl/fi/3pjn86px04k8mq7q5q3h6/NEFFEX-Fight-Back-Official-Video-No.37-MP3_160K.mp3?rlkey=k1j7x2woagxujekwxano6n4ge&st=bcl0xd7o&dl=1' },
+        { name: 'NEFFEX - Purpose', url: 'https://dl.dropboxusercontent.com/scl/fi/ixhlx1kiw3gqnij817rz7/NEFFEX-Purpose-Copyright-Free-No.177-MP3_160K.mp3?rlkey=civmcmnzols7yy2b64dduiq8y&st=j6kqivoc&dl=1' },
+        { name: 'NEFFEX - Rumors', url: 'https://dl.dropboxusercontent.com/scl/fi/6trrxr9mcu9mhbl061dkj/NEFFEX-Rumors-Lyrics-MP3_160K.mp3?rlkey=fh14ss4axvmt4up01c467nrxk&st=dvsyyzsd&dl=1' },
+        { name: 'NEFFEX - Best of Me', url: 'https://dl.dropboxusercontent.com/scl/fi/rypimhnwa3f0sc7becgz8/NEFFEX-Best-of-Me-Copyright-Free-No.23-MP3_160K.mp3?rlkey=l6fqcjlklv2f08g8v9du23fb3&st=nguyidh9&dl=1' },
+        { name: 'NEFFEX - Chance', url: 'https://dl.dropboxusercontent.com/scl/fi/cyxhytondpo74u1mbqdl5/NEFFEX-Chance-Copyright-Free-No.65-MP3_160K.mp3?rlkey=ha1km8kbvg6f8va6sozefdw96&st=v0eg4i31&dl=1' },
+        { name: 'NEFFEX - Cold', url: 'https://dl.dropboxusercontent.com/scl/fi/3sxfjqb6ph9tfv6k1cz0h/NEFFEX-Cold-Copyright-Free-No.60-MP3_160K.mp3?rlkey=2wxp3ofoq9v26vxd9fh3iq9er&st=ghcd60wa&dl=1' },
+        { name: 'NEFFEX - Grateful', url: 'https://dl.dropboxusercontent.com/scl/fi/v5419s2y2klq6ookxpzrd/NEFFEX-Grateful-Copyright-Free-No.54-MP3_160K.mp3?rlkey=6to3htylrlnxsru26ik2neds1&st=q47h5sgq&dl=1' },
+        { name: 'NEFFEX - Life', url: 'https://dl.dropboxusercontent.com/scl/fi/uw1f789tb9v4i2k4xyw42/NEFFEX-Life-Copyright-Free-No.42-MP3_160K.mp3?rlkey=y9y56c3ui6f8kx8ar6l2f9pzv&st=9sgmxut6&dl=1' }
+    ];
+    let currentSongIndex = 0, isPlaying = false;
+
+    const loadingScreen = document.getElementById('loading-screen');
+    const mainContent = document.getElementById('main-content');
+    const infoHost = document.getElementById('info-host');
+    const infoSni = document.getElementById('info-sni');
+    const infoProto = document.getElementById('info-proto');
+    const infoTransport = document.getElementById('info-transport');
+    const runtimeDisplay = document.getElementById('runtime-display');
+    const configDisplay = document.getElementById('config-display');
+    const copyBtn = document.getElementById('copy-btn');
+    const addressBtn = document.getElementById('address-btn');
+    const addressSelected = document.getElementById('address-selected');
+    const addressModal = document.getElementById('address-modal');
+    const addressListEl = document.getElementById('address-list');
+    const addressClose = document.getElementById('address-close');
+    const sniBtn = document.getElementById('sni-btn');
+    const sniSelected = document.getElementById('sni-selected');
+    const sniModal = document.getElementById('sni-modal');
+    const sniListEl = document.getElementById('sni-list');
+    const sniClose = document.getElementById('sni-close');
+    const protoButtons = document.getElementById('proto-buttons');
+    const transButtons = document.getElementById('trans-buttons');
+    const playBtn = document.getElementById('play');
+    const songName = document.getElementById('song-name');
+    const player = document.getElementById('floating-player');
+    const dragHandle = document.querySelector('.player-drag-handle');
+
+    let isDragging = false, offsetX, offsetY;
+
+    dragHandle.addEventListener('mousedown', e => {
+        isDragging = true;
+        offsetX = e.clientX - player.getBoundingClientRect().left;
+        offsetY = e.clientY - player.getBoundingClientRect().top;
+    });
+    document.addEventListener('mousemove', e => {
+        if (!isDragging) return;
+        let x = e.clientX - offsetX;
+        let y = e.clientY - offsetY;
+        const w = player.offsetWidth, h = player.offsetHeight;
+        x = Math.max(0, Math.min(x, window.innerWidth - w));
+        y = Math.max(0, Math.min(y, window.innerHeight - h));
+        player.style.left = x + 'px';
+        player.style.top = y + 'px';
+        player.style.right = 'auto';
+        player.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', () => isDragging = false);
+
+    dragHandle.addEventListener('touchstart', e => {
+        isDragging = true;
+        const t = e.touches[0];
+        offsetX = t.clientX - player.getBoundingClientRect().left;
+        offsetY = t.clientY - player.getBoundingClientRect().top;
+        e.preventDefault();
+    });
+    document.addEventListener('touchmove', e => {
+        if (!isDragging) return;
+        const t = e.touches[0];
+        let x = t.clientX - offsetX;
+        let y = t.clientY - offsetY;
+        const w = player.offsetWidth, h = player.offsetHeight;
+        x = Math.max(0, Math.min(x, window.innerWidth - w));
+        y = Math.max(0, Math.min(y, window.innerHeight - h));
+        player.style.left = x + 'px';
+        player.style.top = y + 'px';
+        player.style.right = 'auto';
+        player.style.bottom = 'auto';
+        e.preventDefault();
+    });
+    document.addEventListener('touchend', () => isDragging = false);
+
+    function loadSong(i) { 
+        songName.textContent = songs[i].name; 
+        audio.src = songs[i].url;
+        audio.onerror = () => {
+            console.log("⚠️ Hindi ma-play ang kanta, lumilipat...");
+            setTimeout(() => { if(currentSongIndex < songs.length-1) nextSong(); }, 1500);
+        };
+    }
+    function togglePlay() { 
+        audio.play().then(()=>{
+            isPlaying = true; 
+            playBtn.textContent = '⏸';
+        }).catch(e=>{
+            console.log("ℹ️ Pindutin ulit para mag-play:", e);
+            isPlaying = false;
+            playBtn.textContent = '▶';
+        }); 
+    }
+    function nextSong() { currentSongIndex = (currentSongIndex+1)%songs.length; loadSong(currentSongIndex); if(isPlaying) audio.play().catch(e=>{}); }
+    function prevSong() { currentSongIndex = (currentSongIndex-1+songs.length)%songs.length; loadSong(currentSongIndex); if(isPlaying) audio.play().catch(e=>{}); }
+    function stopMusic() { audio.pause(); audio.currentTime=0; isPlaying=false; playBtn.textContent='▶'; }
+
+    // ✅ FINAL NA — WALANG GUN, WALANG NONE — LAHAT NAKA-MULTI AT H2,HTTP/1.1
+    function buildConfig() {
+        const addr = selectedAddress, sni = selectedSNI, host = currentHost, path = PATHS[selectedProtocol][selectedTransport];
+        let transportParam = '';
+
+        // Iba pang transport — walang binago
+        switch(selectedTransport){
+            case 'ws': 
+                transportParam = `type=ws&path=${encodeURIComponent(path)}&host=${host}`; 
+                break;
+            case 'httpupgrade': 
+                transportParam = `type=httpupgrade&path=${encodeURIComponent(path)}&host=${host}`; 
+                break;
+            case 'xhttp': 
+                transportParam = `type=xhttp&path=${encodeURIComponent(path)}&host=${host}&mode=packet-upstream`; 
+                break;
+            // ✅ GRPC — EKSATONG HILING MO: headerType=multi, alpn=h2,http/1.1 + serviceName
+            case 'grpc': 
+                transportParam = `type=grpc&path=${encodeURIComponent(path)}&host=${host}&serviceName=${encodeURIComponent(path)}&headerType=multi&alpn=h2,http/1.1`; 
+                break;
+        }
+
+        // ✅ LAHAT NG PROTOCOL + GRPC — TAMA NA ANG LAHAT NG PARAMETERS
+        switch(selectedProtocol){
+            case 'vless': 
+                return `vless://${UUID}@${addr}:443?encryption=none&${transportParam}&security=tls&fp=chrome&sni=${sni}#VLESS-GRPC-VIRGOZKI`;
+            case 'trojan': 
+                return `trojan://${SS_PASSWORD}@${addr}:443?${transportParam}&security=tls&fp=chrome&sni=${sni}#TROJAN-GRPC-VIRGOZKI`;
+            case 'vmess': 
+                // ✅ VMess gRPC — siguradong naka multi at h2,http/1.1
+                return `vmess://${btoa(JSON.stringify({
+                    v:'2',
+                    ps:`VMESS-GRPC-VIRGOZKI`,
+                    add:addr,
+                    port:'443',
+                    id:UUID,
+                    aid:'0',
+                    scy:'auto',
+                    net:'grpc',
+                    host:host,
+                    path:path,
+                    tls:'tls',
+                    sni:sni,
+                    fp:'chrome',
+                    alpn:'h2,http/1.1',
+                    type:'multi'
+                })).replace(/=+$/,'')}`;
+            case 'shadowsocks': 
+                const ssCred = btoa(`${SS_METHOD}:${SS_PASSWORD}`).replace(/=+$/,'');
+                return `ss://${ssCred}@${addr}:443?${transportParam}&security=tls&sni=${sni}#SS-GRPC-VIRGOZKI`;
+        }
+    }
+
+    function updateRuntime() {
+        const d=Math.floor(performance.now()/1000);
+        runtimeDisplay.textContent=[3600,60,1].map(t=>String(Math.floor(d/t)%60).padStart(2,'0')).join(':');
+    }
+
+    function buildList(container, items, type) {
+        container.innerHTML='';
+        items.forEach(item=>{
+            const el=document.createElement('div'); el.className='modal-item'; el.textContent=item;
+            el.addEventListener('click',()=>{
+                if(type==='address'){ selectedAddress=item; selectedSNI=item; addressSelected.textContent='Napili: '+item; sniSelected.textContent='Napili: '+item; addressBtn.textContent=item+' ▾'; addressModal.classList.remove('show'); }
+                else { selectedSNI=item; sniSelected.textContent='Napili: '+item; sniBtn.textContent=item+' ▾'; sniModal.classList.remove('show'); }
+                updateUI();
+            });
+            container.appendChild(el);
+        });
+    }
+
+    function buildOptions(container, items, sel, lbl, cb) {
+        container.innerHTML='';
+        items.forEach(i=>{
+            const b=document.createElement('button'); b.className='option-btn'+(i===sel?' active':''); b.textContent=lbl[i];
+            b.addEventListener('click',()=>{
+                container.querySelectorAll('.option-btn').forEach(x=>x.classList.remove('active')); b.classList.add('active'); cb(i); updateUI();
+            });
+            container.appendChild(b);
+        });
+    }
+
+    function updateUI() {
+        infoHost.textContent=selectedAddress;
+        infoSni.textContent=selectedSNI;
+        infoProto.textContent=PROTOCOL_LABELS[selectedProtocol];
+        infoTransport.textContent=TRANSPORT_LABELS[selectedTransport];
+        configDisplay.value=buildConfig();
+    }
+
+    window.addEventListener('load',()=>{
+        setTimeout(()=>{
+            loadingScreen.classList.add('hidden');
+            mainContent.style.display='flex';
+            loadSong(0);
+            updateUI();
+            buildList(addressListEl, addressList, 'address');
+            buildList(sniListEl, sniList, 'sni');
+            buildOptions(protoButtons, PROTOCOLS, selectedProtocol, PROTOCOL_LABELS, v=>selectedProtocol=v);
+            buildOptions(transButtons, TRANSPORTS, selectedTransport, TRANSPORT_LABELS, v=>selectedTransport=v);
+            setInterval(updateRuntime, 1000);
+        }, 2000);
+
+        addressBtn.addEventListener('click',()=>addressModal.classList.add('show'));
+        addressClose.addEventListener('click',()=>addressModal.classList.remove('show'));
+        sniBtn.addEventListener('click',()=>sniModal.classList.add('show'));
+        sniClose.addEventListener('click',()=>sniModal.classList.remove('show'));
+
+        playBtn.addEventListener('click', togglePlay);
+        document.getElementById('next').addEventListener('click', nextSong);
+        document.getElementById('prev').addEventListener('click', prevSong);
+        document.getElementById('stop').addEventListener('click', stopMusic);
+        audio.addEventListener('ended', nextSong);
+
+        copyBtn.addEventListener('click',()=>{
+            navigator.clipboard.writeText(configDisplay.value).then(()=>{
+                copyBtn.textContent='✅ NAKOPYA!'; setTimeout(()=>copyBtn.textContent='Kopyahin',2000);
+            }).catch(()=>alert('Gamitin ang long press para kopyahin ang text'));
+        });
+    });
+})();
+</script>
+</body>
+</html>
 
