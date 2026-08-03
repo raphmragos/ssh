@@ -18,11 +18,16 @@ COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 COPY index.html /usr/local/openresty/nginx/html/index.html
 
 ENV XRAY_LOCATION_ASSET=/usr/local/share/xray/
-
-# ✅ PORT EXPOSE — may suporta na sa HTTP/2 at gRPC
-EXPOSE 8080/tcp
+# ✅ SIGURADUHIN ANG PORT NA KAILANGAN NG CLOUD RUN
+ENV PORT=8080
+EXPOSE ${PORT}/tcp
 
 ENTRYPOINT ["/sbin/tini", "--"]
-# ✅ TAMA NA PAGPAPATAKBO — parehong XRAY at OpenResty ay gagana nang sabay
-CMD sh -c "xray run -c /etc/xray.json & exec openresty -g 'daemon off;'"
-
+# ✅ PINAKATAMA NA PARAAN:
+# 1. Palitan ang port sa nginx.conf base sa ibinigay ng Cloud Run
+# 2. Patakbuhin ang Xray sa background nang ligtas
+# 3. Patakbuhin ang OpenResty bilang pangunahing proseso (hindi mag-e-exit)
+CMD sh -c "sed -i 's/listen 8080 ssl http2 reuseport;/listen '$PORT' ssl http2 reuseport;/g' /usr/local/openresty/nginx/conf/nginx.conf && \
+           sed -i 's/listen \[::\]:8080 ssl http2 reuseport;/listen \[::\]:'$PORT' ssl http2 reuseport;/g' /usr/local/openresty/nginx/conf/nginx.conf && \
+           xray run -c /etc/xray.json & \
+           exec openresty -g 'daemon off;'"
