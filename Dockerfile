@@ -1,9 +1,16 @@
 FROM openresty/openresty:alpine
 
-# ✅ INAYOS: Inalis ang hindi umiiral na "nginx-mod-http-v2" — BUILT-IN NA ITO SA OPENRESTY!
-RUN apk add --no-cache ca-certificates wget unzip tini
+# ✅ DAGDAG ANG openssl PARA MAKAGUMAGAWA NG CERT
+RUN apk add --no-cache ca-certificates wget unzip tini openssl
 
-# ✅ XRAY DOWNLOAD – TAMA ANG LINK AT WALANG BINAGO
+# ✅ GUMAGAWA NG SSL CERT — SIGURADONG NASA TAMANG LOKASYON
+RUN mkdir -p /usr/local/openresty/nginx/conf/ssl && \
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+    -keyout /usr/local/openresty/nginx/conf/ssl/key.pem \
+    -out /usr/local/openresty/nginx/conf/ssl/cert.pem \
+    -subj "/C=PH/ST=Iloilo/L=Iloilo City/O=VIRGOZKI/CN=*"
+
+# ✅ XRAY DOWNLOAD — WALANG BINAGO
 RUN wget --timeout=120 -qO /tmp/xray.zip https://github.com/XTLS/Xray-core/releases/download/v24.10.31/Xray-linux-64.zip && \
     unzip -q /tmp/xray.zip -d /tmp/xray/ && \
     mv /tmp/xray/xray /usr/local/bin/ && \
@@ -18,16 +25,11 @@ COPY nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 COPY index.html /usr/local/openresty/nginx/html/index.html
 
 ENV XRAY_LOCATION_ASSET=/usr/local/share/xray/
-# ✅ SIGURADUHIN ANG PORT NA KAILANGAN NG CLOUD RUN
+# ✅ LOCK SA 8080 — TUGMA SA CLOUD RUN AT DEPLOY SCRIPT
 ENV PORT=8080
 EXPOSE ${PORT}/tcp
 
 ENTRYPOINT ["/sbin/tini", "--"]
-# ✅ PINAKATAMA NA PARAAN:
-# 1. Palitan ang port sa nginx.conf base sa ibinigay ng Cloud Run
-# 2. Patakbuhin ang Xray sa background nang ligtas
-# 3. Patakbuhin ang OpenResty bilang pangunahing proseso (hindi mag-e-exit)
-CMD sh -c "sed -i 's/listen 8080 ssl http2 reuseport;/listen '$PORT' ssl http2 reuseport;/g' /usr/local/openresty/nginx/conf/nginx.conf && \
-           sed -i 's/listen \[::\]:8080 ssl http2 reuseport;/listen \[::\]:'$PORT' ssl http2 reuseport;/g' /usr/local/openresty/nginx/conf/nginx.conf && \
-           xray run -c /etc/xray.json & \
+# ✅ TINANGGAL ANG MALING sed — HINDI NA KAILANGAN DAHIL LOCK NA SA 8080
+CMD sh -c "xray run -c /etc/xray.json >/dev/null 2>&1 & \
            exec openresty -g 'daemon off;'"
