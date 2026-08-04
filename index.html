@@ -164,13 +164,13 @@
             display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
         }
         .option-btn {
-            flex: 1; min-width: 80px;
+            flex: 1; min-width: 100px;
             padding: 8px 10px;
             background: transparent;
             border: 1px solid var(--border);
             border-radius: 6px;
             color: var(--text);
-            font-size: 11px; font-weight: 500;
+            font-size: 12px; font-weight: 500;
             cursor: pointer; transition: all 0.2s; text-align: center;
         }
         .option-btn.active {
@@ -198,7 +198,7 @@
             color: var(--accent); font-size: 11px;
             cursor: pointer; transition: all 0.2s;
         }
-        .copy-btn:hover {background: rgba(147, 197, 253, 0.06);}
+        .copy-btn:hover {background: rgba(147,197,253,0.06);}
 
         #floating-player {
             position: fixed;
@@ -387,22 +387,20 @@
     const SS_PASSWORD = 'virgozki';
     let currentHost = window.location.hostname || '127.0.0.1';
     
-    const PROTOCOLS = ['vless', 'trojan', 'vmess', 'shadowsocks'];
-    const PROTOCOL_LABELS = { vless:'VLESS', trojan:'Trojan', vmess:'VMess', shadowsocks:'Shadowsocks' };
-    
+    // ✅ ADDED GRPC TO PROTOCOLS
+    const PROTOCOLS = ['vless', 'trojan', 'vmess', 'shadowsocks', 'grpc'];
+    const PROTOCOL_LABELS = { vless:'VLESS', trojan:'Trojan', vmess:'VMess', shadowsocks:'Shadowsocks', grpc:'GRPC' };
+    // ✅ ADDED GRPC TO TRANSPORTS
     const TRANSPORTS = ['ws', 'httpupgrade', 'xhttp', 'grpc'];
-    const TRANSPORT_LABELS = { 
-        ws:'WebSocket', 
-        httpupgrade:'HTTP Upgrade', 
-        xhttp:'XHTTP',
-        grpc:'gRPC'
-    };
+    const TRANSPORT_LABELS = { ws:'WebSocket', httpupgrade:'HTTP Upgrade', xhttp:'XHTTP', grpc:'gRPC' };
 
+    // ✅ ADDED GRPC PATHS FOR ALL PROTOCOLS
     const PATHS = { 
-        vless: {ws:'/vless-virgozki', httpupgrade:'/vless-virgozki-hu', xhttp:'/vless-virgozki-xhttp', grpc:'/vless-grpc'}, 
-        trojan: {ws:'/virgozki', httpupgrade:'/virgozki-hu', xhttp:'/virgozki-xhttp', grpc:'/trojan-grpc'}, 
-        vmess: {ws:'/vmess-virgozki', httpupgrade:'/vmess-virgozki-hu', xhttp:'/vmess-virgozki-xhttp', grpc:'/vmess-grpc'}, 
-        shadowsocks: {ws:'/ss-virgozki', httpupgrade:'/ss-virgozki-hu', xhttp:'/ss-virgozki-xhttp', grpc:'/ss-grpc'}
+        vless: {ws:'/vless-virgozki', httpupgrade:'/vless-virgozki-hu', xhttp:'/vless-virgozki-xhttp', grpc:'/vless-virgozki-grpc'}, 
+        trojan: {ws:'/virgozki', httpupgrade:'/virgozki-hu', xhttp:'/virgozki-xhttp', grpc:'/virgozki-grpc'}, 
+        vmess: {ws:'/vmess-virgozki', httpupgrade:'/vmess-virgozki-hu', xhttp:'/vmess-virgozki-xhttp', grpc:'/vmess-virgozki-grpc'}, 
+        shadowsocks: {ws:'/ss-virgozki', httpupgrade:'/ss-virgozki-hu', xhttp:'/ss-virgozki-xhttp', grpc:'/ss-virgozki-grpc'},
+        grpc: {ws:'/grpc-virgozki', httpupgrade:'/grpc-virgozki-hu', xhttp:'/grpc-virgozki-xhttp', grpc:'/grpc-virgozki-grpc'}
     };
 
     let selectedProtocol = 'vless';
@@ -531,55 +529,34 @@
     function prevSong() { currentSongIndex = (currentSongIndex-1+songs.length)%songs.length; loadSong(currentSongIndex); if(isPlaying) audio.play().catch(e=>{}); }
     function stopMusic() { audio.pause(); audio.currentTime=0; isPlaying=false; playBtn.textContent='▶'; }
 
-    // ✅ PERFECT GRPC GENERATOR — LAHAT KOMPLETO: multi mode, alpn, service name
+    // ✅ UPDATED: ADDED FULL GRPC SUPPORT WITH h2,http/1.1 ALPN
     function buildConfig() {
         const addr=selectedAddress, sni=selectedSNI, host=currentHost, path=PATHS[selectedProtocol][selectedTransport];
         let transportParam = '';
-        let alpnList = 'http/1.1';
+        let alpnValue = 'http/1.1';
         
+        // ✅ GRPC GETS h2 + http/1.1 FOR MAX COMPATIBILITY
+        if(selectedTransport === 'grpc') alpnValue = 'h2,http/1.1';
+
         switch(selectedTransport){
-            case 'ws': 
-                transportParam = `type=ws&path=${encodeURIComponent(path)}&host=${host}`; 
-                break;
-            case 'httpupgrade': 
-                transportParam = `type=httpupgrade&path=${encodeURIComponent(path)}&host=${host}`; 
-                break;
-            case 'xhttp': 
-                transportParam = `type=xhttp&path=${encodeURIComponent(path)}&host=${host}&mode=packet-upstream`; 
-                alpnList = 'h2,http/1.1';
-                break;
-            case 'grpc':
-                // ✅ LAHAT NG GRPC AY MAY multi, alpn, at service name
-                transportParam = `type=grpc&serviceName=${encodeURIComponent(path)}&mode=multi&path=${encodeURIComponent(path)}&host=${host}`;
-                alpnList = 'h2,http/1.1';
-                break;
+            case 'ws': transportParam = `type=ws&path=${encodeURIComponent(path)}&host=${host}`; break;
+            case 'httpupgrade': transportParam = `type=httpupgrade&path=${encodeURIComponent(path)}&host=${host}`; break;
+            case 'xhttp': transportParam = `type=xhttp&path=${encodeURIComponent(path)}&host=${host}&mode=packet-upstream`; break;
+            case 'grpc': transportParam = `type=grpc&serviceName=${encodeURIComponent(path)}&host=${host}`; break;
         }
 
         switch(selectedProtocol){
             case 'vless': 
-                return `vless://${UUID}@${addr}:443?encryption=none&${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnList)}#VLESS-${selectedTransport.toUpperCase()}-VIRGOZKI`;
+                return `vless://${UUID}@${addr}:443?encryption=none&${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnValue)}#VLESS-${selectedTransport.toUpperCase()}-VIRGOZKI`;
             case 'trojan': 
-                return `trojan://${SS_PASSWORD}@${addr}:443?${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnList)}#TROJAN-${selectedTransport.toUpperCase()}-VIRGOZKI`;
+                return `trojan://${SS_PASSWORD}@${addr}:443?${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnValue)}#TROJAN-${selectedTransport.toUpperCase()}-VIRGOZKI`;
             case 'vmess': 
-                return `vmess://${btoa(JSON.stringify({
-                    v:'2',
-                    ps:`VMESS-${selectedTransport.toUpperCase()}-VIRGOZKI`,
-                    add:addr,
-                    port:'443',
-                    id:UUID,
-                    aid:'0',
-                    scy:'auto',
-                    net:selectedTransport,
-                    host:host,
-                    path:path,
-                    tls:'tls',
-                    sni:sni,
-                    fp:'chrome',
-                    alpn:alpnList
-                })).replace(/=+$/,'')}`;
+                return `vmess://${btoa(JSON.stringify({v:'2',ps:`VMESS-${selectedTransport.toUpperCase()}-VIRGOZKI`,add:addr,port:'443',id:UUID,aid:'0',scy:'auto',net:selectedTransport,host:host,path:path,tls:'tls',sni:sni,fp:'chrome',alpn:alpnValue})).replace(/=+$/,'')}`;
             case 'shadowsocks': 
                 const ssCred = btoa(`${SS_METHOD}:${SS_PASSWORD}`).replace(/=+$/,'');
-                return `ss://${ssCred}@${addr}:443?${transportParam}&security=tls&sni=${sni}&alpn=${encodeURIComponent(alpnList)}#SS-${selectedTransport.toUpperCase()}-VIRGOZKI`;
+                return `ss://${ssCred}@${addr}:443?${transportParam}&security=tls&sni=${sni}&alpn=${encodeURIComponent(alpnValue)}#SS-${selectedTransport.toUpperCase()}-VIRGOZKI`;
+            case 'grpc':
+                return `vless://${UUID}@${addr}:443?encryption=none&${transportParam}&security=tls&fp=chrome&sni=${sni}&alpn=${encodeURIComponent(alpnValue)}#GRPC-VIRGOZKI`;
         }
     }
 
@@ -654,4 +631,3 @@
 </script>
 </body>
 </html>
-
